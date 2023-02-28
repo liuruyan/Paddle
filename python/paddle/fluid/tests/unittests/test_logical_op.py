@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 from paddle.framework import _non_static_mode
 from paddle.static import Executor, Program, program_guard
 
@@ -24,6 +25,7 @@ SUPPORTED_DTYPES = [
     bool,
     np.int8,
     np.int16,
+    np.float16,
     np.int32,
     np.int64,
     np.float32,
@@ -213,6 +215,7 @@ def type_map_factory():
     ]
 
 
+@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestCPU(unittest.TestCase):
     def test(self):
         test(self)
