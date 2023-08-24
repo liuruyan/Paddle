@@ -93,10 +93,11 @@ TEST(assist_struct_test, symbolic_dim_table) {
   EXPECT_EQ(symbolTable.getOp(), program.module_op());
 }
 
-TEST(assist_struct_test, symbolic_dim_mgr) {
+TEST(assist_struct_test, symbolic_dim_mgr_) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   ir::SymbolicDimMgr symDimMgr(program.module_op());
   ir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim();
