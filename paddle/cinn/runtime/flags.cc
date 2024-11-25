@@ -300,6 +300,10 @@ PD_DEFINE_bool(cinn_check_tensor_buffer_map,
                BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
                "Whether to check tensor buffer mapping in cinn ir.");
 
+PD_DEFINE_bool(cinn_enable_iter_bind_simplify,
+               BoolFromEnv("FLAGS_cinn_enable_iter_bind_simplify", true),
+               "Whether to enable iter bind simplify in cinn.");
+
 namespace cinn {
 namespace runtime {
 

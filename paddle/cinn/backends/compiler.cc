@@ -36,6 +36,8 @@
 #include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
 PD_DECLARE_string(cinn_source_code_save_path);
 PD_DECLARE_string(cinn_dump_group_lowered_func);
@@ -233,6 +235,8 @@ void SourceCodePrint::write(const std::string& source_code) {
 }
 
 void Compiler::Build(const Module& module, const std::string& code) {
+  cinn::ir::PrintIdsLens();
+  cinn::common::PrintAbsLens();
   target_.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module); },

@@ -36,8 +36,21 @@
         err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
+PD_DECLARE_bool(cinn_enable_iter_bind_simplify);
 namespace cinn {
 namespace ir {
+
+static int64_t fuseOriLen = 0;
+static int64_t fuseOptLen = 0;
+static int64_t splitOriLen = 0;
+static int64_t splitOptLen = 0;
+
+void PrintIdsLens() {
+  std::cout << "fuse ori len: " << fuseOriLen << std::endl;
+  std::cout << "fuse opt len: " << fuseOptLen << std::endl;
+  std::cout << "split ori len: " << splitOriLen << std::endl;
+  std::cout << "split opt len: " << splitOptLen << std::endl;
+}
 
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
@@ -124,7 +137,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     std::vector<Expr> outter_loops = GetLoopsOfExpr(loop, root);
 
     // TODO(liujinnan): Deal dynamic shape.
-    if (!ContainDynamicShape(root)) {
+    if (!ContainDynamicShape(root) && FLAGS_cinn_enable_iter_bind_simplify) {
       // Create an analyzer of outter loops and new fused loop.
       std::vector<Expr> combine_loops = outter_loops;
       combine_loops.push_back(new_node);
@@ -134,9 +147,12 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
       // Simplify the bindings of new fused loop.
       VLOG(4) << "Before SimplifyBindings in split, ir is:\n" << new_node;
-      common::SimplifyBlockBinding::SimplifyBindings(
+      auto lens = common::SimplifyBlockBinding::SimplifyBindings(
           new_node, outter_loops, ana);
       VLOG(4) << "After SimplifyBindings in split, ir is:\n" << new_node;
+
+      splitOriLen += lens.first;
+      splitOptLen += lens.second;
     }
     this->Replace(loop, new_node);
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
@@ -236,7 +252,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Expr> outter_loops = GetLoopsOfExpr(loop, root);
 
   // TODO(liujinnan): Deal dynamic shape.
-  if (!ContainDynamicShape(root)) {
+  if (!ContainDynamicShape(root) && FLAGS_cinn_enable_iter_bind_simplify) {
     // Create an analyzer of outter loops and new fused loop.
     std::vector<Expr> combine_loops = outter_loops;
     combine_loops.push_back(new_node);
@@ -246,8 +262,12 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
 
     // Simplify the bindings of new fused loop.
     VLOG(4) << "Before SimplifyBindings in split, ir is:\n" << new_node;
-    common::SimplifyBlockBinding::SimplifyBindings(new_node, outter_loops, ana);
+    auto lens = common::SimplifyBlockBinding::SimplifyBindings(
+        new_node, outter_loops, ana);
     VLOG(4) << "After SimplifyBindings in split, ir is:\n" << new_node;
+
+    splitOriLen += lens.first;
+    splitOptLen += lens.second;
   }
 
   this->Replace(loop, new_node);
@@ -359,7 +379,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Expr> outter_loops = GetLoopsOfExpr(loop, root);
 
   // TODO(liujinnan): Deal dynamic shape.
-  if (!ContainDynamicShape(root)) {
+  if (!ContainDynamicShape(root) && FLAGS_cinn_enable_iter_bind_simplify) {
     // Create an analyzer of outter loops and new fused loop.
     std::vector<Expr> combine_loops = outter_loops;
     combine_loops.push_back(new_node);
@@ -367,10 +387,13 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
         common::CollectVarIntervalsOfExprs(combine_loops);
     common::SymbolicExprAnalyzer ana{var_intervals_t};
 
-    // Simplify the bindings of new fused loop.
     VLOG(4) << "Before SimplifyBindings in split, ir is:\n" << new_node;
-    common::SimplifyBlockBinding::SimplifyBindings(new_node, outter_loops, ana);
+    auto lens = common::SimplifyBlockBinding::SimplifyBindings(
+        new_node, outter_loops, ana);
     VLOG(4) << "After SimplifyBindings in split, ir is:\n" << new_node;
+
+    splitOriLen += lens.first;
+    splitOptLen += lens.second;
   }
 
   this->Replace(loop, new_node);
@@ -481,7 +504,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   std::vector<Expr> outter_loops = GetLoopsOfExpr(loops[0], root);
 
   // TODO(liujinnan): Deal dynamic shape.
-  if (!ContainDynamicShape(root)) {
+  if (!ContainDynamicShape(root) && FLAGS_cinn_enable_iter_bind_simplify) {
     // Create an analyzer of outter loops and new fused loop.
     std::vector<Expr> combine_loops = outter_loops;
     combine_loops.push_back(new_stmt);
@@ -491,8 +514,12 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
 
     // Simplify the bindings of new fused loop.
     VLOG(4) << "Before SimplifyBindings in Fuse, ir is:\n" << new_stmt;
-    common::SimplifyBlockBinding::SimplifyBindings(new_stmt, outter_loops, ana);
+    auto lens = common::SimplifyBlockBinding::SimplifyBindings(
+        new_stmt, outter_loops, ana);
     VLOG(4) << "After SimplifyBindings in Fuse, ir is:\n" << new_stmt;
+
+    fuseOriLen += lens.first;
+    fuseOptLen += lens.second;
   }
 
   this->Replace(loops[0], new_stmt);

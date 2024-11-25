@@ -696,7 +696,16 @@ void SimplifyBlockBinding::Visit(const ir::ScheduleBlockRealize* op,
                                  Expr* expr) {
   auto sch_block_rlz_op = expr->As<ir::ScheduleBlockRealize>();
   if (sch_block_rlz_op->iter_values.empty()) return;
+
+  for (auto&& value : sch_block_rlz_op->iter_values) {
+    if (value.is_index()) ori_length_ += value.as_index().length();
+  }
+
   IterMapSimplify(sch_block_rlz_op->iter_values, loop_var_, analyzer_);
+
+  for (auto&& value : sch_block_rlz_op->iter_values) {
+    if (value.is_index()) opt_length_ += value.as_index().length();
+  }
 }
 
 }  // namespace common

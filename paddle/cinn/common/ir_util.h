@@ -28,6 +28,8 @@
 namespace cinn {
 namespace common {
 
+void PrintAbsLens();
+
 Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
                        const std::vector<Expr> &indices);
 Expr IndiceToAbsOffset(const std::vector<int> &shape,

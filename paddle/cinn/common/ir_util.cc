@@ -28,6 +28,16 @@
 namespace cinn {
 namespace common {
 
+static int64_t oriVerLen = 0;
+static int64_t tmpVerLen = 0;
+static int64_t finalyLen = 0;
+
+void PrintAbsLens() {
+  std::cout << "orig version len: " << oriVerLen << std::endl;
+  std::cout << "temp version len: " << tmpVerLen << std::endl;
+  std::cout << "finaly len: " << finalyLen << std::endl;
+}
+
 namespace {
 
 // ramp + scalar or broadcast
@@ -349,6 +359,8 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
                         "The size of shape should be less than or "
                         "equal to the size of indices."));
   Expr res;
+  Expr oriRes;
+  Expr tmpRes;
   ir::TryElevateInt32ToInt64(shape);
   common::cas_intervals_t var_intervals =
       common::CollectVarIntervalsOfExprs(indices);
@@ -365,6 +377,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
             shape[i].type()));
     Expr indice_cast = indices[i];
     optim::SimplifyCast(&indice_cast);
+    // finaly version
     if (res.defined()) {
       res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indice_cast);
       if (res.is_index()) {
@@ -378,6 +391,35 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
         res = MergeMulMod(&analyzer, res.as_index()).as_index().Normalize();
       }
     }
+
+    // temp version
+    if (tmpRes.defined()) {
+      tmpRes = RampRelatedAdd(RampRelatedMul(tmpRes, shape[i]), indice_cast);
+    } else {
+      tmpRes = indice_cast;
+    }
+
+    if (i > 0) {
+      tmpRes = cinn::common::AutoSimplify(res);
+    }
+
+    // origin version
+    Expr indice_prod = indices[i];
+    optim::SimplifyCast(&indice_prod);
+    for (int j = i + 1; j < shape.size(); j++) {
+      indice_prod = RampRelatedMul(indice_prod, shape[j]);
+    }
+    if (oriRes.defined()) {
+      oriRes = RampRelatedAdd(oriRes, indice_prod);
+    } else {
+      oriRes = indice_prod;
+    }
+  }
+
+  if (res.is_index() && tmpRes.is_index() && oriRes.is_index()) {
+    oriVerLen += cinn::common::AutoSimplify(oriRes).as_index().length();
+    tmpVerLen += tmpRes.as_index().length();
+    finalyLen += res.as_index().length();
   }
 
   return res;

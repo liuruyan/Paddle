@@ -209,23 +209,30 @@ class SimplifyBlockBinding : public ir::IRMutator<> {
                                 const SymbolicExprAnalyzer& analyzer)
       : loop_var_(loop_var), analyzer_(analyzer) {}
 
-  static void SimplifyBindings(ir::Expr expr,
-                               const std::vector<ir::Expr>& loop_srefs,
-                               const SymbolicExprAnalyzer& analyzer) {
+  static std::pair<int, int> SimplifyBindings(
+      ir::Expr expr,
+      const std::vector<ir::Expr>& loop_srefs,
+      const SymbolicExprAnalyzer& analyzer) {
     std::vector<ir::Var> loop_var;
     for (const ir::Expr& sref : loop_srefs) {
       const ir::For* loop = sref.As<ir::For>();
       loop_var.emplace_back(loop->loop_var);
     }
-    SimplifyBlockBinding(loop_var, analyzer)(&expr);
+    auto mutator = SimplifyBlockBinding(loop_var, analyzer);
+    mutator(&expr);
+    return std::make_pair(mutator.GetOriLength(), mutator.GetOptLength());
   }
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+  int64_t GetOriLength() const { return ori_length_; }
+  int64_t GetOptLength() const { return opt_length_; }
 
  private:
   void Visit(const ir::For* op, Expr* expr) override;
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override;
 
+  int64_t ori_length_ = 0, opt_length_ = 0;
   std::vector<ir::Var> loop_var_;
   common::SymbolicExprAnalyzer analyzer_;
 };

@@ -27,6 +27,8 @@ PD_DECLARE_int32(cinn_error_message_level);
 namespace cinn {
 namespace ir {
 
+void PrintIdsLens();
+
 /**
  * A struct helps to implement dynamic shape Schedule primitives.
  */
